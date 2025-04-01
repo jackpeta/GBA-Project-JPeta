@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "gba.h"
 
@@ -116,6 +117,10 @@ int checkWinCondition(void) {
 
 int firstFrame = 1;
 int endingTimer;
+static volatile int personal_record = 0;
+static volatile int firstPlay = 1;
+static volatile int hasWon = 0;
+
 
 int main(void) {
   // Manipulate REG_DISPCNT here to set Mode 3. //
@@ -330,13 +335,39 @@ int main(void) {
         drawFullScreenImageDMA(minesweeper_win_screen);
         waitForVBlank();
 
-        char timerString[20];
-        sprintf(timerString, "YOUR TIME: %d", seconds);
-        drawString(90, 80, timerString, BLACK);
+        char beatRecord[40];
+
+        // if it's the first play, simply set the record without comparing.
+        if (firstPlay) {
+            personal_record = seconds;
+        } else {
+              if (seconds < personal_record) {
+                  personal_record = seconds;
+                  strcpy(beatRecord, "You beat your personal best!");
+              } else {
+                  strcpy(beatRecord, "You didn't beat your personal best.");
+              }
+          }
+
+          char timerString[20];
+          sprintf(timerString, "YOUR TIME: %d", seconds);
+          drawString(60, 80, timerString, BLACK);
+
+          // display record info if it's not the first play.
+          if (!firstPlay && hasWon) {
+              char recordString[20];
+              sprintf(recordString, "YOUR BEST: %d", personal_record);
+              drawString(75, 80, recordString, BLACK);
+              drawString(90, 10, beatRecord, BLACK);
+          }
+
+          
 
         if (KEY_JUST_PRESSED(BUTTON_START, currentButtons, previousButtons)) {
           waitForVBlank();
           fillScreenDMA(BLACK);  
+          firstPlay = 0;
+          hasWon = 1;
           state = INIT;
         }
             break;
@@ -345,6 +376,7 @@ int main(void) {
         if (KEY_JUST_PRESSED(BUTTON_SELECT, currentButtons, previousButtons)) {
           state = START;
         }
+
             waitForVBlank();
             fillScreenDMA(BLACK);
             waitForVBlank();
