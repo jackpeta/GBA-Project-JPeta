@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "minesweeper_tile_flag_nocursor.h": "c",
+        "title_screen.h": "c"
+    }
+}

@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "windows-gcc-x86",
+            "compilerPath": "C:/Users/jackp/Downloads/i686-14.2.0-release-mcf-dwarf-ucrt-rt_v12-rev1/mingw32/bin/gcc.exe"
+        }
+    ],
+    "version": 4
+}
