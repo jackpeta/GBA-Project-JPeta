@@ -121,6 +121,9 @@ static volatile int personal_record = 0;
 static volatile int firstPlay = 1;
 static volatile int hasWon = 0;
 static volatile int oldRecord = 1000000;
+static volatile int cursor_row = 1;
+static volatile int cursor_column = 4;
+static volatile int prev_cursor_row, prev_cursor_column;
 
 
 int main(void) {
@@ -218,9 +221,6 @@ int main(void) {
             }
             
             // 0-indexed arrays mean row, col off by 1
-           static int cursor_row = 1;
-           static int cursor_column = 4;
-           static int prev_cursor_row, prev_cursor_column;
 
             drawCursor(cursor_row, cursor_column);
 
@@ -314,6 +314,11 @@ int main(void) {
               for (int j = 0; j < BOARD_COLS; j++) {
                   game.mines[i][j] = original_mines[i][j];
               }
+          }
+
+          if (!firstPlay) {
+            cursor_row = 1;
+            cursor_column = 4;
           }
 
       
