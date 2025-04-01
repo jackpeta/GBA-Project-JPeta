@@ -120,6 +120,7 @@ int endingTimer;
 static volatile int personal_record = 0;
 static volatile int firstPlay = 1;
 static volatile int hasWon = 0;
+static volatile int oldRecord = 1000000;
 
 
 int main(void) {
@@ -336,13 +337,15 @@ int main(void) {
         waitForVBlank();
 
         char beatRecord[40];
+        int player_beat_record = 0;
 
         // if it's the first play, simply set the record without comparing.
         if (firstPlay) {
             personal_record = seconds;
         } else {
-              if (seconds < personal_record) {
+              if (seconds <= personal_record) {
                   personal_record = seconds;
+                  player_beat_record = 1;
                   strcpy(beatRecord, "You beat your personal best!");
               } else {
                   strcpy(beatRecord, "You didn't beat your personal best.");
@@ -355,10 +358,19 @@ int main(void) {
 
           // display record info if it's not the first play.
           if (!firstPlay && hasWon) {
-              char recordString[20];
-              sprintf(recordString, "YOUR BEST: %d", personal_record);
-              drawString(75, 80, recordString, BLACK);
-              drawString(90, 10, beatRecord, BLACK);
+              char recordString[30];
+
+              // this if statement is necessary because the strings are of different lengths
+              // and as such we need to center them differently based on the outcome
+              if (player_beat_record) {
+                sprintf(recordString, "YOUR PREVIOUS BEST: %d", oldRecord);
+                drawString(75, 80, recordString, BLACK);
+                drawString(90, 30, beatRecord, BLACK);
+              } else {
+                sprintf(recordString, "YOUR BEST: %d", personal_record);
+                drawString(75, 80, recordString, BLACK);
+                drawString(90, 10, beatRecord, BLACK);
+              }
           }
 
           
@@ -368,6 +380,7 @@ int main(void) {
           fillScreenDMA(BLACK);  
           firstPlay = 0;
           hasWon = 1;
+          oldRecord = oldRecord < seconds ? oldRecord : seconds;
           state = INIT;
         }
             break;
