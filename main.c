@@ -18,6 +18,16 @@
 #include "images/minesweeper_win_screen.h"
 #include "images/minesweeper_lose_screen.h"
 
+//images for animated title screen
+#include "images/titleframe1.h"
+#include "images/titleframe2.h"
+#include "images/titleframe3.h"
+#include "images/titleframe4.h"
+#include "images/titleframe5.h"
+#include "images/titleframe6.h"
+#include "images/titleframe7.h"
+
+
 
 // Add any additional states you need for your app. You are not required to use
 // these specific provided states.
@@ -139,16 +149,56 @@ int main(void) {
   // Load initial application state
   enum gba_state state = START;
 
+  int moveIndex = 0; //used for animation
+  int firstTime = 1; // also used for animation
+
   while (1) {
     currentButtons = BUTTONS; 
 
-    switch (state) {
-        case START:
-            drawFullScreenImageDMA(minesweeper_title_10);
+          switch (state) {
+              case START:
+              if (firstTime == 1) {
+                drawFullScreenImageDMA(jackanim1);
+                firstTime = 0;
+              }
+            // Draw the current moving image based on moveIndex
+            switch (moveIndex) {
+              case 0:
+                drawFullScreenImageDMA(jackanim2);
+                break;
+              case 1:
+                drawFullScreenImageDMA(jackanim3);
+                break;
+              case 2:
+                drawFullScreenImageDMA(jackanim4);
+                break;
+              case 3:
+                drawFullScreenImageDMA(jackanim5);
+                break;
+              case 4:
+                drawFullScreenImageDMA(jackanim6);
+                break;
+              case 5:
+                drawFullScreenImageDMA(jackanim7);
+                break;
+            }
+            vBlankCounter++;
+            if (vBlankCounter >= VBLANK_DELAY) {
+              moveIndex = (moveIndex + 1) % TOTAL_MOVES;  // loop through images (0 -> 1 -> 2 -> ... -> 0)
+              vBlankCounter = 0;
+            }
 
             if (KEY_JUST_PRESSED(BUTTON_START, currentButtons, previousButtons)) {
-                state = INIT;
-            }        
+              // reset gamestate whenever we go to INIT from START
+              personal_record = 0;
+              firstPlay = 1;
+              hasWon = 0;
+              oldRecord = 1000000;
+              state = INIT;
+              cursor_row = 1;
+              cursor_column = 4;
+            } 
+
             break;
 
     

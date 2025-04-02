@@ -17,6 +17,9 @@
 #define CURSOR_OFFSET_LENGTH(i) (34 + (15 * i) + 6)
 #define CURSOR_OFFSET_WIDTH(j) (44 + (15 * j) + 6)
 
+#define VBLANK_DELAY 15
+#define TOTAL_MOVES 6
+
 // mine states
 #define TILE_REVEALED 0
 #define TILE_NOFLAG_NOMINE 1
