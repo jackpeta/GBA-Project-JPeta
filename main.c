@@ -73,33 +73,62 @@ void drawCursor(int cursor_row, int cursor_col) {
   drawRectDMA(CURSOR_OFFSET_LENGTH(cursor_row), CURSOR_OFFSET_WIDTH(cursor_col), 3, 3, WHITE);
 }
 
-void drawFlag(int cursor_row, int cursor_col) {
-  undrawTileDMA(TILE_OFFSET_LENGTH(cursor_row), TILE_OFFSET_WIDTH(cursor_col), 15, 15, minesweeper_gba_board_start_of_play, 150, 120, 1);
-  drawImageDMA(TILE_OFFSET_LENGTH(cursor_row), TILE_OFFSET_WIDTH(cursor_col), 15, 15, minesweeper_tile_flag_nocursor);
-  drawCursor(cursor_row, cursor_col);
-}
-
-// use when board changed
-void undrawCursorPressed(int cursor_row, int cursor_col) {
-  undrawTileDMA(TILE_OFFSET_LENGTH(cursor_row), TILE_OFFSET_WIDTH(cursor_col), 15, 15, minesweeper_board_after_init, 240, 160, 0);
-  drawCursor(cursor_row, cursor_col);
-}
-
-// use when board not changed
-void undrawCursorMoved(int prev_cursor_row, int prev_cursor_col, int cursor_row, int cursor_col) {
-  if (game.mines[prev_cursor_row][prev_cursor_col] != original_mines[prev_cursor_row][prev_cursor_col]) {
-    undrawTileDMA(TILE_OFFSET_LENGTH(prev_cursor_row), TILE_OFFSET_WIDTH(prev_cursor_col), 15, 15, minesweeper_board_after_init, 240, 160, 0);
-    drawCursor(cursor_row, cursor_col);
-  } else {
-    undrawTileDMA(CURSOR_OFFSET_LENGTH(prev_cursor_row), CURSOR_OFFSET_WIDTH(prev_cursor_col), 3, 3, minesweeper_gba_board_start_of_play, 150, 120, 1);
-    drawCursor(cursor_row, cursor_col);
-  }
-}
 
 void undrawFlag(int cursor_row, int cursor_col) {
   undrawTileDMA(TILE_OFFSET_LENGTH(cursor_row), TILE_OFFSET_WIDTH(cursor_col), 15, 15, minesweeper_gba_board_start_of_play, 150, 120, 1);
   drawImageDMA(TILE_OFFSET_LENGTH(cursor_row), TILE_OFFSET_WIDTH(cursor_col), 15, 15, minesweeper_tile_noflag_nocursor);
   drawCursor(cursor_row, cursor_col);
+}
+
+// draws the correct tile state based on cursor row and cursor column
+void drawTileState(int r, int c, int draw_cursor) {
+  // out of bounds check
+  if (r < 0 || r >= BOARD_ROWS || c < 0 || c >= BOARD_COLS) {
+      return;
+  }
+
+  int state = game.mines[r][c];
+  const u16* image_to_draw = NULL;
+
+  switch (state) {
+      case TILE_REVEALED:
+          // if revealed, draw from background board
+          undrawTileDMA(TILE_OFFSET_LENGTH(r), TILE_OFFSET_WIDTH(c), TILE_SIZE, TILE_SIZE, minesweeper_board_after_init, WIDTH, HEIGHT, 0);
+          break; 
+
+      case TILE_FLAG_MINE:
+      case TILE_FLAG_NOMINE:
+          image_to_draw = minesweeper_tile_flag_nocursor;
+          break;
+
+      case TILE_NOFLAG_MINE:
+      case TILE_NOFLAG_NOMINE:
+      default: // default: non-flagged, if state is unexpected
+          image_to_draw = minesweeper_tile_noflag_nocursor;
+          break;
+  }
+
+  // draw base tile image if tile is selected but not revealed
+  if (image_to_draw) {
+      drawImageDMA(TILE_OFFSET_LENGTH(r), TILE_OFFSET_WIDTH(c), TILE_SIZE, TILE_SIZE, image_to_draw);
+  }
+
+  if (draw_cursor) {
+      drawCursor(r, c); // always draw our cursor, our 3x3 rectangle
+  }
+  // -----------
+}
+
+// called when we move our cursor
+void updateCursorDraw(int prev_r, int prev_c, int r, int c) {
+drawTileState(prev_r, prev_c, 0); // restore tile state
+
+drawTileState(r, c, 1); 
+}
+
+// when unflagging/flagging, cursor remains on the tile
+void updateTileDraw(int r, int c) {
+  drawTileState(r, c, 1);
 }
 
 // used to assert win condition
@@ -205,147 +234,116 @@ int main(void) {
         case PLAY: {
           if (KEY_JUST_PRESSED(BUTTON_SELECT, currentButtons, previousButtons)) {
             state = START;
+            firstFrame = 1; 
           }
-
-            if (firstFrame) {
-                drawFullScreenImageDMA(minesweeper_board_after_init);
-                firstFrame = 0;
-
-                char timerString[20];
-
-                sprintf(timerString, "Timer: 0");
-                drawString(24, 95, timerString, GREEN);
-            }
-            
-            // update timer counter
-            frames++;
-            if (frames >= FRAMES_PER_SECOND / 2) {
-                seconds++;
-                frames = 0;
-                
-                // clear previous timer text area
-                drawRectDMA(24, 95, 100, 8, MINESWEEPER_GREEN);
-                
-                // draw new timer text
-                char timerString[20];
-                sprintf(timerString, "Timer: %d", seconds);
-                drawString(24, 95, timerString, GREEN);
-            }
-            
-            for (int i = 0; i < BOARD_ROWS; i++) {
-              for (int j = 0; j < BOARD_COLS; j++) {
-
-                switch (game.mines[i][j]) {
-                  case TILE_REVEALED:
-
-                    continue;
-
-                  break;
-                  case TILE_NOFLAG_NOMINE:
-
-                    drawImageDMA(TILE_OFFSET_LENGTH(i), TILE_OFFSET_WIDTH(j), 15, 15, minesweeper_tile_noflag_nocursor);
-
-                  break;
-                  case TILE_NOFLAG_MINE:
-
-                    drawImageDMA(TILE_OFFSET_LENGTH(i), TILE_OFFSET_WIDTH(j), 15, 15, minesweeper_tile_noflag_nocursor);
-
-                  break;
-                  case TILE_FLAG_NOMINE:
-                    
-                    drawImageDMA(TILE_OFFSET_LENGTH(i), TILE_OFFSET_WIDTH(j), 15, 15, minesweeper_tile_flag_nocursor);
-
-
-                  break;
-
-                  case TILE_FLAG_MINE:
-
-                    drawImageDMA(TILE_OFFSET_LENGTH(i), TILE_OFFSET_WIDTH(j), 15, 15, minesweeper_tile_flag_nocursor);
-
-                  break;
-                  default:
-                  break;
-    
-                }
+        
+          if (firstFrame) {
+              // draw base background
+              drawFullScreenImageDMA(minesweeper_board_after_init);
+        
+              // iterative loop to draw all non-revealed tiles (initial state)
+              for (int i = 0; i < BOARD_ROWS; i++) {
+                  for (int j = 0; j < BOARD_COLS; j++) {
+                      if (game.mines[i][j] != TILE_REVEALED) {
+                          drawTileState(i, j, 0); 
+                      }
+                  }
               }
-            }
-            
-            // 0-indexed arrays mean row, col off by 1
 
-            drawCursor(cursor_row, cursor_column);
+              // draw initial cursor position
+              drawTileState(cursor_row, cursor_column, 1); 
+        
+              firstFrame = 0; 
+        
+              // draw initial timer text
+              char timerString[20];
+              sprintf(timerString, "Timer: 0");
 
-            // check for button presses
-            if (KEY_JUST_PRESSED(BUTTON_RIGHT, currentButtons, previousButtons)) {
-              prev_cursor_column = cursor_column;
+              // erase potential old text 
+              drawRectDMA(24, 95, 100, 8, MINESWEEPER_GREEN);
+              drawString(24, 95, timerString, GREEN);
+          }
+        
+          frames++;
+          if (frames >= FRAMES_PER_SECOND) { 
+              seconds++;
+              frames = 0;
+              drawRectDMA(24, 95, 100, 8, MINESWEEPER_GREEN);
+              char timerString[20];
+              sprintf(timerString, "Timer: %d", seconds);
+              drawString(24, 95, timerString, GREEN);
+          }
+        
+        
+          // store previous cursor positions
+          prev_cursor_row = cursor_row; 
+          prev_cursor_column = cursor_column;
+
+          int moved = 0; // flag to check if cursor moved
+        
+          if (KEY_JUST_PRESSED(BUTTON_RIGHT, currentButtons, previousButtons)) {
               cursor_column = (cursor_column + 1) % BOARD_COLS;
-              undrawCursorMoved(cursor_row, prev_cursor_column, cursor_row, cursor_column);
+              moved = 1;
           }
           if (KEY_JUST_PRESSED(BUTTON_LEFT, currentButtons, previousButtons)) {
-              prev_cursor_column = cursor_column;
               cursor_column = (cursor_column - 1 + BOARD_COLS) % BOARD_COLS;
-              undrawCursorMoved(cursor_row, prev_cursor_column, cursor_row, cursor_column);
+              moved = 1;
           }
           if (KEY_JUST_PRESSED(BUTTON_UP, currentButtons, previousButtons)) {
-              prev_cursor_row = cursor_row;
               cursor_row = (cursor_row - 1 + BOARD_ROWS) % BOARD_ROWS;
-              undrawCursorMoved(prev_cursor_row, cursor_column, cursor_row, cursor_column);
+              moved = 1;
           }
           if (KEY_JUST_PRESSED(BUTTON_DOWN, currentButtons, previousButtons)) {
-              prev_cursor_row = cursor_row;
               cursor_row = (cursor_row + 1) % BOARD_ROWS;
-              undrawCursorMoved(prev_cursor_row, cursor_column, cursor_row, cursor_column);
+              moved = 1;
           }
-      
-          // A Button - reveal a tile
+        
+          // if cursor moved, update drawing
+          if (moved) {
+              updateCursorDraw(prev_cursor_row, prev_cursor_column, cursor_row, cursor_column);
+          }
+        
+          // A button - reveal a tile
           if (KEY_JUST_PRESSED(BUTTON_A, currentButtons, previousButtons)) {
-            if (game.mines[cursor_row][cursor_column] == TILE_NOFLAG_MINE) {
-              endingTimer = seconds;
-              state = LOSE;
-            } else if (game.mines[cursor_row][cursor_column] == TILE_FLAG_MINE) {
-              game.mines[cursor_row][cursor_column] = TILE_FLAG_MINE;
-            } else if (game.mines[cursor_row][cursor_column] == TILE_FLAG_NOMINE) {
-                game.mines[cursor_row][cursor_column] = TILE_FLAG_NOMINE;
-            } else {
-              undrawCursorPressed(cursor_row, cursor_column);
-              game.mines[cursor_row][cursor_column] = TILE_REVEALED;
-            }
-          }
-      
-          // B Button - flag a tile
-          if (KEY_JUST_PRESSED(BUTTON_B, currentButtons, previousButtons)) {
-            if (game.mines[cursor_row][cursor_column] == TILE_NOFLAG_MINE) {
-
-              drawFlag(cursor_row, cursor_column);
-              game.mines[cursor_row][cursor_column] = TILE_FLAG_MINE;
-              if (checkWinCondition()) {
-                endingTimer = seconds;
-                state = WIN;
+              int r = cursor_row;
+              int c = cursor_column;
+              if (game.mines[r][c] == TILE_NOFLAG_MINE) {
+                  endingTimer = seconds;
+                  state = LOSE; 
+              } else if (game.mines[r][c] == TILE_NOFLAG_NOMINE) {
+                  // reveal tile
+                  game.mines[r][c] = TILE_REVEALED;
+                  updateTileDraw(r, c); 
+                  // TODO: Implement flood fill reveal for empty tiles if needed
               }
-
-            } else if (game.mines[cursor_row][cursor_column] == TILE_FLAG_MINE) {
-
-                undrawFlag(cursor_row, cursor_column);
-                game.mines[cursor_row][cursor_column] = TILE_NOFLAG_MINE;
-
-            } else if (game.mines[cursor_row][cursor_column] == TILE_FLAG_NOMINE) {
-
-                undrawFlag(cursor_row, cursor_column);
-                game.mines[cursor_row][cursor_column] = TILE_NOFLAG_NOMINE;
-
-            } else if (game.mines[cursor_row][cursor_column] == TILE_NOFLAG_NOMINE) {
-
-                drawFlag(cursor_row, cursor_column);
-                game.mines[cursor_row][cursor_column] = TILE_FLAG_NOMINE;
-
-            } else {
-              break; // revealed tile or random edge case? 
-            }
           }
-          
+        
+          // B button - flag/unflag a tile
+          if (KEY_JUST_PRESSED(BUTTON_B, currentButtons, previousButtons)) {
+              int r = cursor_row;
+              int c = cursor_column;
+              int stateChanged = 0;
+              if (game.mines[r][c] == TILE_NOFLAG_MINE || game.mines[r][c] == TILE_NOFLAG_NOMINE) {
+                  game.mines[r][c] = (game.mines[r][c] == TILE_NOFLAG_MINE) ? TILE_FLAG_MINE : TILE_FLAG_NOMINE;
+                  stateChanged = 1;
+                  if (game.mines[r][c] == TILE_FLAG_MINE && checkWinCondition()) {
+                      endingTimer = seconds;
+                      state = WIN; // always check win condition after flagging
+                  }
+              } else if (game.mines[r][c] == TILE_FLAG_MINE || game.mines[r][c] == TILE_FLAG_NOMINE) {
+                  // unflag the tile
+                  game.mines[r][c] = (game.mines[r][c] == TILE_FLAG_MINE) ? TILE_NOFLAG_MINE : TILE_NOFLAG_NOMINE;
+                  stateChanged = 1;
+              }
+        
+              if (stateChanged && state == PLAY) { //uUpdate draw only if state changed and game is still playing
+                  updateTileDraw(r, c); 
+              }
+          }
           break;
-        }
+        } 
 
-          case INIT:
+        case INIT:
 
           if (KEY_JUST_PRESSED(BUTTON_SELECT, currentButtons, previousButtons)) {
             state = START;
@@ -366,6 +364,7 @@ int main(void) {
               }
           }
 
+          // reset cursor state every time we go again
           if (!firstPlay) {
             cursor_row = 1;
             cursor_column = 4;
