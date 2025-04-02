@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "gba.h"
 
@@ -116,6 +117,14 @@ int checkWinCondition(void) {
 
 int firstFrame = 1;
 int endingTimer;
+static volatile int personal_record = 0;
+static volatile int firstPlay = 1;
+static volatile int hasWon = 0;
+static volatile int oldRecord = 1000000;
+static volatile int cursor_row = 1;
+static volatile int cursor_column = 4;
+static volatile int prev_cursor_row, prev_cursor_column;
+
 
 int main(void) {
   // Manipulate REG_DISPCNT here to set Mode 3. //
@@ -212,9 +221,6 @@ int main(void) {
             }
             
             // 0-indexed arrays mean row, col off by 1
-           static int cursor_row = 1;
-           static int cursor_column = 4;
-           static int prev_cursor_row, prev_cursor_column;
 
             drawCursor(cursor_row, cursor_column);
 
@@ -310,6 +316,11 @@ int main(void) {
               }
           }
 
+          if (!firstPlay) {
+            cursor_row = 1;
+            cursor_column = 4;
+          }
+
       
           if (KEY_JUST_PRESSED(BUTTON_START, currentButtons, previousButtons)) {
               seconds = 0;
@@ -330,13 +341,51 @@ int main(void) {
         drawFullScreenImageDMA(minesweeper_win_screen);
         waitForVBlank();
 
-        char timerString[20];
-        sprintf(timerString, "YOUR TIME: %d", seconds);
-        drawString(90, 80, timerString, BLACK);
+        char beatRecord[40];
+        int player_beat_record = 0;
+
+        // if it's the first play, simply set the record without comparing.
+        if (firstPlay) {
+            personal_record = seconds;
+        } else {
+              if (seconds <= personal_record) {
+                  personal_record = seconds;
+                  player_beat_record = 1;
+                  strcpy(beatRecord, "You beat your personal best!");
+              } else {
+                  strcpy(beatRecord, "You didn't beat your personal best.");
+              }
+          }
+
+          char timerString[20];
+          sprintf(timerString, "YOUR TIME: %d", seconds);
+          drawString(60, 80, timerString, BLACK);
+
+          // display record info if it's not the first play.
+          if (!firstPlay && hasWon) {
+              char recordString[30];
+
+              // this if statement is necessary because the strings are of different lengths
+              // and as such we need to center them differently based on the outcome
+              if (player_beat_record) {
+                sprintf(recordString, "YOUR PREVIOUS BEST: %d", oldRecord);
+                drawString(75, 80, recordString, BLACK);
+                drawString(90, 30, beatRecord, BLACK);
+              } else {
+                sprintf(recordString, "YOUR BEST: %d", personal_record);
+                drawString(75, 80, recordString, BLACK);
+                drawString(90, 10, beatRecord, BLACK);
+              }
+          }
+
+          
 
         if (KEY_JUST_PRESSED(BUTTON_START, currentButtons, previousButtons)) {
           waitForVBlank();
           fillScreenDMA(BLACK);  
+          firstPlay = 0;
+          hasWon = 1;
+          oldRecord = oldRecord < seconds ? oldRecord : seconds;
           state = INIT;
         }
             break;
@@ -345,6 +394,7 @@ int main(void) {
         if (KEY_JUST_PRESSED(BUTTON_SELECT, currentButtons, previousButtons)) {
           state = START;
         }
+
             waitForVBlank();
             fillScreenDMA(BLACK);
             waitForVBlank();
