@@ -345,7 +345,7 @@ int main(void) {
         int player_beat_record = 0;
 
         // if it's the first play, simply set the record without comparing.
-        if (firstPlay) {
+        if (firstPlay || !hasWon) {
             personal_record = seconds;
         } else {
               if (seconds <= personal_record) {
@@ -403,7 +403,8 @@ int main(void) {
 
            if (KEY_JUST_PRESSED(BUTTON_START, currentButtons, previousButtons)) {
             waitForVBlank();
-            fillScreenDMA(BLACK);  
+            fillScreenDMA(BLACK);
+            firstPlay = 0;  
             state = INIT;
            }
             break;
